@@ -36,6 +36,7 @@ jobs:
           cd python-metrics-demo/app
           sudo docker build -t $IMAGE_REPO:latest .
           sudo docker tag $IMAGE_REPO:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO:latest
+          aws ecr get-login-password --region ap-northeast-1 | docker login --username AWS --password-stdin 227295996532.dkr.ecr.ap-northeast-1.amazonaws.com
           sudo docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO
 
       - name: Setup kubectl
