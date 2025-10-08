@@ -34,9 +34,9 @@ jobs:
       - name: Build and push Docker image
         run: |
           cd python-metrics-demo/app
-          docker build -t $IMAGE_REPO:latest .
-          docker tag $IMAGE_REPO:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO:latest
-          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO:latest
+          sudo docker build -t $IMAGE_REPO:latest .
+          sudo docker tag $IMAGE_REPO:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO:latest
+          sudo docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO:latest
 
       - name: Setup kubectl
         uses: azure/setup-kubectl@v3
