@@ -46,7 +46,7 @@ jobs:
         uses: azure/setup-helm@v3
 
       - name: Update kubeconfig
-        run: aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_REGION
+        run: aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region ${{ secrets.AWS_REGION1 }}
 
       - name: Create namespaces
         run: |
