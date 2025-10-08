@@ -1,0 +1,83 @@
+name: Build and Deploy Python Metrics Demo
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+  EKS_CLUSTER_NAME: ${{ secrets.EKS_CLUSTER_NAME }}
+  IMAGE_REPO: python-metrics-demo
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push Docker image
+        run: |
+          cd app
+          docker build -t $IMAGE_REPO:latest .
+          docker tag $IMAGE_REPO:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO:latest
+          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO:latest
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_REGION
+
+      - name: Create namespaces
+        run: |
+          kubectl create ns demo --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create ns monitoring --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy Python App
+        run: |
+          envsubst < k8s/python-app.yaml | kubectl apply -f -
+
+      - name: Deploy Prometheus
+        run: |
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo update
+          helm upgrade --install prometheus prometheus-community/prometheus -n monitoring -f k8s/prometheus-values.yaml
+
+      - name: Create Grafana Dashboards ConfigMaps
+        run: |
+          kubectl create configmap python-dashboard \
+            -n monitoring \
+            --from-file=k8s/dashboards/python_app_requests.json \
+            --from-file=k8s/dashboards/cluster_overview.json \
+            -o yaml --dry-run=client | kubectl apply -f -
+          kubectl label configmap python-dashboard -n monitoring grafana_dashboard="1" --overwrite
+
+      - name: Deploy Grafana
+        run: |
+          helm repo add grafana https://grafana.github.io/helm-charts
+          helm repo update
+          helm upgrade --install grafana grafana/grafana -n monitoring -f k8s/grafana-values.yaml
+
+      - name: Verify Deployments
+        run: |
+          kubectl get pods -n demo
+          kubectl get pods -n monitoring
+          kubectl get svc -n monitoring
