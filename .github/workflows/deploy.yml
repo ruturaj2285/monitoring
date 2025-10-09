@@ -60,29 +60,32 @@ jobs:
 
       - name: Deploy Prometheus
         run: |
+          cd python-metrics-demo
           helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
           helm repo update
-          helm upgrade --install prometheus prometheus-community/prometheus -n monitoring -f k8s/prometheus-values.yaml
+          helm upgrade --install prometheus prometheus-community/prometheus -n monitoring2285 -f k8s/prometheus-values.yaml
 
       - name: Create Grafana Dashboards ConfigMaps
         run: |
+          cd python-metrics-demo
           kubectl create configmap python-dashboard \
-            -n monitoring \
+            -n monitoring2285 \
             --from-file=k8s/dashboards/python_app_requests.json \
             --from-file=k8s/dashboards/cluster_overview.json \
             -o yaml --dry-run=client | kubectl apply -f -
-          kubectl label configmap python-dashboard -n monitoring grafana_dashboard="1" --overwrite
+          kubectl label configmap python-dashboard -n monitoring2285 grafana_dashboard="1" --overwrite
 
       - name: Deploy Grafana
         run: |
+          cd python-metrics-demo
           helm repo add grafana https://grafana.github.io/helm-charts
           helm repo update
-          helm upgrade --install grafana grafana/grafana -n monitoring -f k8s/grafana-values.yaml
+          helm upgrade --install grafana grafana/grafana -n monitoring2285 -f k8s/grafana-values.yaml
 
       - name: Verify Deployments
         run: |
-          kubectl get pods -n demo
-          kubectl get pods -n monitoring
-          kubectl get svc -n monitoring
+          kubectl get pods -n demo2285
+          kubectl get pods -n monitoring2285
+          kubectl get svc -n monitoring2285
 
 
