@@ -4,6 +4,9 @@ adminPassword: grafana123
 service:
   type: LoadBalancer
 
+persistence:
+  enabled: false
+
 datasources:
   datasources.yaml:
     apiVersion: 1
@@ -12,7 +15,7 @@ datasources:
         type: prometheus
         access: proxy
         isDefault: true
-        url: http://prometheus-server.monitoring.svc.cluster.local
+        url: http://prometheus-server.monitoring2285.svc.cluster.local
 
 sidecar:
   dashboards:

@@ -1,4 +1,11 @@
 server:
   service:
     type: LoadBalancer
+  persistentVolume:
+    enabled: false
+
+alertmanager:
+  persistentVolume:
+    enabled: false
+
 
