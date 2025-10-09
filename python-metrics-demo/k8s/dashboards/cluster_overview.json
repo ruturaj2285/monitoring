@@ -37,6 +37,70 @@
         }
       ],
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 9 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Node CPU Usage",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(node_cpu_seconds_total{mode!=\"idle\"}[5m])) by (instance)",
+          "legendFormat": "{{instance}}",
+          "refId": "C"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 18 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Node Memory Usage",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "targets": [
+        {
+          "expr": "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100",
+          "legendFormat": "{{instance}}",
+          "refId": "D"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 27 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Pod Restarts Count",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "targets": [
+        {
+          "expr": "sum(kube_pod_container_status_restarts_total)",
+          "legendFormat": "Total Pod Restarts",
+          "refId": "E"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 36 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Node Disk Usage (%)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "targets": [
+        {
+          "expr": "(1 - (node_filesystem_avail_bytes{fstype!=\"tmpfs\"} / node_filesystem_size_bytes{fstype!=\"tmpfs\"})) * 100",
+          "legendFormat": "{{instance}}",
+          "refId": "F"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 45 }
     }
   ]
 }
