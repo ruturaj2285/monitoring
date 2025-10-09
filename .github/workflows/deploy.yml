@@ -16,9 +16,11 @@ jobs:
     runs-on: self-hosted
 
     steps:
+      # 🧾 Checkout the repo
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # 🔐 Configure AWS credentials
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -27,59 +29,74 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
 
+      # 🔑 Login to ECR
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      # 🐳 Build and push Docker image
       - name: Build and push Docker image
         run: |
           cd python-metrics-demo/app
-          aws ecr get-login-password --region ap-northeast-1 | docker login --username AWS --password-stdin 227295996532.dkr.ecr.ap-northeast-1.amazonaws.com
-          docker build -t python-metrics-demo .
-          docker tag python-metrics-demo:latest 227295996532.dkr.ecr.ap-northeast-1.amazonaws.com/python-metrics-demo:latest
-          docker push 227295996532.dkr.ecr.ap-northeast-1.amazonaws.com/python-metrics-demo:latest
+          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+          docker build -t $IMAGE_REPO .
+          docker tag $IMAGE_REPO:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO:latest
+          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO:latest
 
+      # ⚙️ Setup kubectl and helm
       - name: Setup kubectl
         uses: azure/setup-kubectl@v3
 
       - name: Setup Helm
         uses: azure/setup-helm@v3
 
+      # ☁️ Update kubeconfig
       - name: Update kubeconfig
-        run: aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region ${{ secrets.AWS_REGION1 }}
+        run: aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_REGION
 
+      # 🧱 Create namespaces
       - name: Create namespaces
         run: |
           kubectl create ns demo2285 --dry-run=client -o yaml | kubectl apply -f -
           kubectl create ns monitoring2285 --dry-run=client -o yaml | kubectl apply -f -
 
+      # 🚀 Deploy Python App
       - name: Deploy Python App
         run: |
-          envsubst < k8s/python-app.yaml | kubectl apply -f -
+          cd python-metrics-demo
+          envsubst < k8s/python-app.yaml | kubectl apply -f - -n demo2285
 
+      # 📈 Deploy Prometheus
       - name: Deploy Prometheus
         run: |
           helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
           helm repo update
-          helm upgrade --install prometheus prometheus-community/prometheus -n monitoring -f k8s/prometheus-values.yaml
+          helm upgrade --install prometheus prometheus-community/prometheus \
+            -n monitoring2285 \
+            -f python-metrics-demo/k8s/prometheus-values.yaml
 
+      # 📊 Create Grafana Dashboards ConfigMaps
       - name: Create Grafana Dashboards ConfigMaps
         run: |
           kubectl create configmap python-dashboard \
-            -n monitoring \
-            --from-file=k8s/dashboards/python_app_requests.json \
-            --from-file=k8s/dashboards/cluster_overview.json \
+            -n monitoring2285 \
+            --from-file=python-metrics-demo/k8s/dashboards/python_app_requests.json \
+            --from-file=python-metrics-demo/k8s/dashboards/cluster_overview.json \
             -o yaml --dry-run=client | kubectl apply -f -
-          kubectl label configmap python-dashboard -n monitoring grafana_dashboard="1" --overwrite
+          kubectl label configmap python-dashboard -n monitoring2285 grafana_dashboard="1" --overwrite
 
+      # 📉 Deploy Grafana
       - name: Deploy Grafana
         run: |
           helm repo add grafana https://grafana.github.io/helm-charts
           helm repo update
-          helm upgrade --install grafana grafana/grafana -n monitoring -f k8s/grafana-values.yaml
+          helm upgrade --install grafana grafana/grafana \
+            -n monitoring2285 \
+            -f python-metrics-demo/k8s/grafana-values.yaml
 
+      # ✅ Verify Deployments
       - name: Verify Deployments
         run: |
-          kubectl get pods -n demo
-          kubectl get pods -n monitoring
-          kubectl get svc -n monitoring
+          kubectl get pods -n demo2285
+          kubectl get pods -n monitoring2285
+          kubectl get svc -n monitoring2285
