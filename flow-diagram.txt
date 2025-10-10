@@ -1,0 +1,61 @@
+                  ┌───────────────────────────┐
+                  │        GitHub Repo         │
+                  │  (python-metrics-demo)     │
+                  └────────────┬───────────────┘
+                               │
+                               ▼
+                ┌──────────────────────────────┐
+                │   GitHub Actions Workflow     │
+                │ (.github/workflows/main.yml)  │
+                ├──────────────────────────────┤
+                │ 1️⃣ Checkout Code             │
+                │ 2️⃣ Configure AWS Credentials │
+                │ 3️⃣ Build Docker Image        │
+                │ 4️⃣ Push to ECR               │
+                │ 5️⃣ Connect to EKS Cluster    │
+                │ 6️⃣ Deploy App + Monitoring   │
+                └────────────┬─────────────────┘
+                               │
+                               ▼
+        ┌────────────────────────────────────────────┐
+        │           AWS Elastic Kubernetes Service    │
+        │                    (EKS)                    │
+        ├────────────────────────────────────────────┤
+        │ Namespace: demo2285                         │
+        │   • Deployment: python-metrics-demo         │
+        │   • Service: LoadBalancer (port 5000)       │
+        │                                             │
+        │ Namespace: monitoring2285                   │
+        │   • Prometheus (Helm chart)                 │
+        │   • Grafana (Helm chart)                    │
+        │   • Dashboards via ConfigMap (sidecar)      │
+        └────────────┬───────────────────────────────┘
+                     │
+                     │  (scrape metrics)
+                     ▼
+        ┌───────────────────────────┐
+        │       Prometheus          │
+        │ - Collects metrics from   │
+        │   python-metrics-demo:/metrics │
+        │ - Also scrapes node/pod metrics │
+        └────────────┬──────────────┘
+                     │
+                     │ (visualize metrics)
+                     ▼
+        ┌───────────────────────────┐
+        │         Grafana           │
+        │ - Data source: Prometheus │
+        │ - Dashboards:             │
+        │     1️⃣ Python App Requests│
+        │     2️⃣ Cluster Overview   │
+        └────────────┬──────────────┘
+                     │
+                     │ (access via browser)
+                     ▼
+        ┌───────────────────────────────┐
+        │        User / Developer        │
+        │ - Opens Grafana LoadBalancer   │
+        │ - Logs in (admin / grafana123) │
+        │ - Views dashboards live        │
+        └───────────────────────────────┘
+

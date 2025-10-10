@@ -1,0 +1,358 @@
+.github
+python-metrics-demo
+app
+Dockerfile
+app.py
+requirements.txt
+k8s
+dashboards
+cluster_overview.json
+python_app_requests.json
+grafana-values.yaml
+prometheus-values.yaml
+python-app.yaml
+
+
+
+
+
+FROM python:3.9-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+COPY app.py .
+CMD ["python", "app.py"]
+
+from flask import Flask
+from prometheus_client import Counter, generate_latest
+
+app = Flask(__name__)
+REQUEST_COUNT = Counter('app_requests_total', 'Total HTTP requests')
+
+@app.route('/')
+def home():
+    REQUEST_COUNT.inc()
+    return "Hello from Python Metrics App!"
+
+@app.route('/metrics')
+def metrics():
+    return generate_latest()
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
+
+flask
+prometheus_client
+
+
+{
+  "id": null,
+  "uid": "cluster-overview",
+  "title": "Cluster Overview",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Pod CPU Usage",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(container_cpu_usage_seconds_total{image!=\"\",container!=\"POD\"}[5m]))",
+          "legendFormat": "CPU usage",
+          "refId": "A"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Pod Memory Usage",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "targets": [
+        {
+          "expr": "sum(container_memory_usage_bytes{image!=\"\",container!=\"POD\"}) / 1024 / 1024",
+          "legendFormat": "Memory (MB)",
+          "refId": "B"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 9 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Node CPU Usage",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(node_cpu_seconds_total{mode!=\"idle\"}[5m])) by (instance)",
+          "legendFormat": "{{instance}}",
+          "refId": "C"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 18 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Node Memory Usage",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "targets": [
+        {
+          "expr": "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100",
+          "legendFormat": "{{instance}}",
+          "refId": "D"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 27 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Pod Restarts Count",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "targets": [
+        {
+          "expr": "sum(kube_pod_container_status_restarts_total)",
+          "legendFormat": "Total Pod Restarts",
+          "refId": "E"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 36 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Node Disk Usage (%)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "targets": [
+        {
+          "expr": "(1 - (node_filesystem_avail_bytes{fstype!=\"tmpfs\"} / node_filesystem_size_bytes{fstype!=\"tmpfs\"})) * 100",
+          "legendFormat": "{{instance}}",
+          "refId": "F"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 45 }
+    }
+  ]
+}
+
+
+
+{
+  "id": null,
+  "uid": "pyapp-req",
+  "title": "Python App Requests",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Total Requests Over Time",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "targets": [
+        {
+          "expr": "app_requests_total",
+          "legendFormat": "requests",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 0 }
+    }
+  ]
+}
+
+adminUser: admin
+adminPassword: grafana123
+
+service:
+  type: LoadBalancer
+
+persistence:
+  enabled: false
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        access: proxy
+        isDefault: true
+        url: http://prometheus-server.monitoring2285.svc.cluster.local
+
+sidecar:
+  dashboards:
+    enabled: true
+    label: grafana_dashboard
+    folder: /var/lib/grafana/dashboards
+    searchNamespace: ALL
+
+
+
+server:
+  service:
+    type: LoadBalancer
+  persistentVolume:
+    enabled: false
+
+alertmanager:
+  persistentVolume:
+    enabled: false
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: python-metrics-demo
+  namespace: demo2285
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: python-metrics-demo
+  template:
+    metadata:
+      labels:
+        app: python-metrics-demo
+    spec:
+      containers:
+        - name: python-metrics-demo
+          image: 227295996532.dkr.ecr.ap-northeast-1.amazonaws.com/python-metrics-demo:latest
+          ports:
+            - containerPort: 5000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: python-metrics-demo
+  namespace: demo2285
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 5000
+      targetPort: 5000
+  selector:
+    app: python-metrics-demo
+
+
+
+
+
+name: Build and Deploy Python Metrics Demo
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+  EKS_CLUSTER_NAME: ${{ secrets.EKS_CLUSTER_NAME }}
+  IMAGE_REPO: python-metrics-demo
+
+jobs:
+  build-and-deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push Docker image
+        run: |
+          cd python-metrics-demo/app
+          aws ecr get-login-password --region ap-northeast-1 | docker login --username AWS --password-stdin 227295996532.dkr.ecr.ap-northeast-1.amazonaws.com
+          docker build -t python-metrics-demo .
+          docker tag python-metrics-demo:latest 227295996532.dkr.ecr.ap-northeast-1.amazonaws.com/python-metrics-demo:latest
+          docker push 227295996532.dkr.ecr.ap-northeast-1.amazonaws.com/python-metrics-demo:latest
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region ${{ secrets.AWS_REGION1 }}
+
+      - name: Create namespaces
+        run: |
+          kubectl create ns demo2285 --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create ns monitoring2285 --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy Python App
+        run: |
+          cd python-metrics-demo
+          envsubst < k8s/python-app.yaml | kubectl apply -f -
+
+      - name: Deploy Prometheus
+        run: |
+          cd python-metrics-demo
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo update
+          helm upgrade --install prometheus prometheus-community/prometheus -n monitoring2285 -f k8s/prometheus-values.yaml
+
+      - name: Create Grafana Dashboards ConfigMaps
+        run: |
+          cd python-metrics-demo
+          kubectl create configmap python-dashboard \
+            -n monitoring2285 \
+            --from-file=k8s/dashboards/python_app_requests.json \
+            --from-file=k8s/dashboards/cluster_overview.json \
+            -o yaml --dry-run=client | kubectl apply -f -
+          kubectl label configmap python-dashboard -n monitoring2285 grafana_dashboard="1" --overwrite
+
+      - name: Deploy Grafana
+        run: |
+          cd python-metrics-demo
+          helm repo add grafana https://grafana.github.io/helm-charts
+          helm repo update
+          helm upgrade --install grafana grafana/grafana -n monitoring2285 -f k8s/grafana-values.yaml
+
+      - name: Verify Deployments
+        run: |
+          kubectl get pods -n demo2285
+          kubectl get pods -n monitoring2285
+          kubectl get svc -n monitoring2285
+
+
