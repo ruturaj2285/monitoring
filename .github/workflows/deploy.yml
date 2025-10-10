@@ -152,10 +152,10 @@ jobs:
           sudo mv grafanactl /usr/local/bin/grafanactl
 
           echo "📊 Deploying dashboards using grafanactl..."
-          if [ -d python-metrics-demo/k8s/dashboards ]; then
-            grafanactl resources push dashboards --path python-metrics-demo/k8s/dashboards/
+          if [ -d k8s/dashboards ]; then
+            grafanactl resources push dashboards --path k8s/dashboards/
           else
-            echo "❌ Dashboards directory not found: python-metrics-demo/k8s/dashboards"
+            echo "❌ Dashboards directory not found: k8s/dashboards"
             exit 1
           fi
 
