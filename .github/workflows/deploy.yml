@@ -102,36 +102,36 @@ jobs:
           sudo apt update
           sudo apt install -y python3-pip
           pip install grafana-client --break-system-packages
-
+          
           cat <<'PY' > import_dashboards.py
           from grafana_client import GrafanaApi
           import os, json
-
-          GRAFANA_HOST = "http://$(kubectl get svc grafana -n monitoring2285 -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'):80"
+          
+          GRAFANA_HOST = "http://grafana.monitoring2285.svc.cluster.local:80"
           API_KEY = os.getenv("GRAFANA_API_KEY")
           DASHBOARD_PATH = "python-metrics-demo/k8s/dashboards"
           FOLDER_NAME = "EKS Monitoring"
-
+          
           grafana = GrafanaApi.from_url(GRAFANA_HOST, API_KEY)
           folders = grafana.folder.get_all()
           folder_id = next((f["id"] for f in folders if f["title"] == FOLDER_NAME), None)
-    if not folder_id:
-        folder_id = grafana.folder.create_folder(FOLDER_NAME)["id"]
-
-    for file in os.listdir(DASHBOARD_PATH):
-        if file.endswith(".json"):
-            path = os.path.join(DASHBOARD_PATH, file)
-            with open(path) as f:
-                data = json.load(f)
-            grafana.dashboard.update_dashboard({
-                "dashboard": data,
-                "folderId": folder_id,
-                "overwrite": True
-            })
-            print(f"✅ Imported {file}")
-    PY
-
-    python3 import_dashboards.py
+          if not folder_id:
+              folder_id = grafana.folder.create_folder(FOLDER_NAME)["id"]
+          
+          for file in os.listdir(DASHBOARD_PATH):
+              if file.endswith(".json"):
+                  path = os.path.join(DASHBOARD_PATH, file)
+                  with open(path) as f:
+                      data = json.load(f)
+                  grafana.dashboard.update_dashboard({
+                      "dashboard": data,
+                      "folderId": folder_id,
+                      "overwrite": True
+                  })
+                  print(f"✅ Imported {file}")
+          PY
+          
+          python3 import_dashboards.py
 
 
 
