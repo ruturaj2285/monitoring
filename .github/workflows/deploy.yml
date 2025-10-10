@@ -82,7 +82,7 @@ jobs:
           sudo tar -xzf grafanactl.tar.gz
           sudo mv grafanactl /usr/local/bin/
           sudo chmod +x /usr/local/bin/grafanactl
-          grafanactl --version
+        
 
       - name: Upload Grafana Dashboards
         env:
