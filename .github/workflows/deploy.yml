@@ -140,8 +140,8 @@ jobs:
       - name: Upload Grafana Dashboards
         env:
           GRAFANA_SERVER: a9f3bae50561b4ef1a71bf4bdae52971-1305649414.ap-northeast-1.elb.amazonaws.com
-          GRAFANA_STACK_ID: local
-          GRAFANA_TOKEN: 
+          # GRAFANA_STACK_ID: local
+          GRAFANA_TOKEN: ${{ secrets.GRAFANA_TOKEN }}
           GRAFANACTL_VERSION: v0.1.5
         run: |
           echo "🔧 Installing grafanactl..."
