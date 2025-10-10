@@ -107,7 +107,7 @@ jobs:
           from grafana_client import GrafanaApi
           import os, json
           
-          GRAFANA_HOST = "http://$(kubectl get svc grafana -n monitoring2285 -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'):80"
+          GRAFANA_HOST = "http://a9f3bae50561b4ef1a71bf4bdae52971-1305649414.ap-northeast-1.elb.amazonaws.com/"
           API_KEY = os.getenv("GRAFANA_API_KEY")
           DASHBOARD_PATH = "python-metrics-demo/k8s/dashboards"
           FOLDER_NAME = "EKS Monitoring"
