@@ -144,6 +144,7 @@ jobs:
           GRAFANA_TOKEN: ${{ secrets.GRAFANA_TOKEN }}
           GRAFANACTL_VERSION: v0.1.5
         run: |
+          cd python-metrics-demo
           echo "🔧 Installing grafanactl..."
           curl -L -o grafanactl-x86_64.tar.gz "https://github.com/grafana/grafanactl/releases/download/${GRAFANACTL_VERSION}/grafanactl_Linux_x86_64.tar.gz"
           tar -xzf grafanactl-x86_64.tar.gz
