@@ -77,10 +77,12 @@ jobs:
 
       - name: Install grafanactl
         run: |
-         curl -L https://github.com/grafana/grafana-foundation-sdk/releases/latest/download/grafanactl-linux-amd64 \
-         -o grafanactl
-          chmod +x grafanactl
+          cd /tmp
+          sudo curl -L -o grafanactl.tar.gz https://github.com/grafana/grafanactl/releases/download/v0.1.5/grafanactl_Linux_x86_64.tar.gz
+          sudo tar -xzf grafanactl.tar.gz
           sudo mv grafanactl /usr/local/bin/
+          sudo chmod +x /usr/local/bin/grafanactl
+          grafanactl --version
 
       - name: Upload Grafana Dashboards
         env:
