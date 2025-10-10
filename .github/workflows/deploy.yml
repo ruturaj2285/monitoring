@@ -65,15 +65,33 @@ jobs:
           helm repo update
           helm upgrade --install prometheus prometheus-community/prometheus -n monitoring2285 -f k8s/prometheus-values.yaml
 
-      - name: Create Grafana Dashboards ConfigMaps
+      # - name: Create Grafana Dashboards ConfigMaps
+      #   run: |
+      #     cd python-metrics-demo
+      #     kubectl create configmap python-dashboard \
+      #       -n monitoring2285 \
+      #       --from-file=k8s/dashboards/python_app_requests.json \
+      #       --from-file=k8s/dashboards/cluster_overview.json \
+      #       -o yaml --dry-run=client | kubectl apply -f -
+      #     kubectl label configmap python-dashboard -n monitoring2285 grafana_dashboard="1" --overwrite
+
+      - name: Install grafanactl
+        run: |
+         curl -L https://github.com/grafana/grafana-foundation-sdk/releases/latest/download/grafanactl-linux-amd64 \
+         -o grafanactl
+          chmod +x grafanactl
+          sudo mv grafanactl /usr/local/bin/
+
+      - name: Upload Grafana Dashboards
+        env:
+         GRAFANA_API_KEY: ${{ secrets.GRAFANA_API_KEY }}
         run: |
           cd python-metrics-demo
-          kubectl create configmap python-dashboard \
-            -n monitoring2285 \
-            --from-file=k8s/dashboards/python_app_requests.json \
-            --from-file=k8s/dashboards/cluster_overview.json \
-            -o yaml --dry-run=client | kubectl apply -f -
-          kubectl label configmap python-dashboard -n monitoring2285 grafana_dashboard="1" --overwrite
+          grafanactl \
+          --endpoint http://$(kubectl get svc grafana -n monitoring2285 -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'):80 \
+          --apikey $GRAFANA_API_KEY \
+          dashboards import --folder "EKS Monitoring" --path k8s/dashboards/
+
 
       - name: Deploy Grafana
         run: |
