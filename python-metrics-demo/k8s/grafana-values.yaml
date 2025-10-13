@@ -17,10 +17,10 @@ datasources:
         isDefault: true
         url: http://prometheus-server.monitoring2285.svc.cluster.local
 
-# sidecar:
-#   dashboards:
-#     enabled: true
-#     label: grafana_dashboard
-#     folder: /var/lib/grafana/dashboards
-#     searchNamespace: ALL
+sidecar:
+   dashboards:
+     enabled: true
+     label: grafana_dashboard
+     folder: /var/lib/grafana/dashboards
+     searchNamespace: ALL
 
