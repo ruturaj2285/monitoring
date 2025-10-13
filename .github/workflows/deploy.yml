@@ -38,7 +38,6 @@ jobs:
           docker build -t python-metrics-demo .
           docker tag python-metrics-demo:latest 227295996532.dkr.ecr.ap-northeast-1.amazonaws.com/python-metrics-demo:latest
           docker push 227295996532.dkr.ecr.ap-northeast-1.amazonaws.com/python-metrics-demo:latest
-
       - name: Setup kubectl
         uses: azure/setup-kubectl@v3
 
@@ -52,19 +51,16 @@ jobs:
         run: |
           kubectl create ns demo2285 --dry-run=client -o yaml | kubectl apply -f -
           kubectl create ns monitoring2285 --dry-run=client -o yaml | kubectl apply -f -
-
       - name: Deploy Python App
         run: |
           cd python-metrics-demo
           envsubst < k8s/python-app.yaml | kubectl apply -f -
-
       - name: Deploy Prometheus
         run: |
           cd python-metrics-demo
           helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
           helm repo update
           helm upgrade --install prometheus prometheus-community/prometheus -n monitoring2285 -f k8s/prometheus-values.yaml
-
       - name: Create Grafana Dashboards ConfigMaps
         run: |
           cd python-metrics-demo
@@ -74,104 +70,14 @@ jobs:
             --from-file=k8s/dashboards/cluster_overview.json \
             -o yaml --dry-run=client | kubectl apply -f -
           kubectl label configmap python-dashboard -n monitoring2285 grafana_dashboard="1" --overwrite
-
-      - name: Install grafanactl
-        run: |
-          cd /tmp
-          sudo curl -L -o grafanactl.tar.gz https://github.com/grafana/grafanactl/releases/download/v0.1.5/grafanactl_Linux_x86_64.tar.gz
-          sudo tar -xzf grafanactl.tar.gz
-          sudo mv grafanactl /usr/local/bin/
-          sudo chmod +x /usr/local/bin/grafanactl
-        
-
-      - name: Upload Grafana Dashboards
-        env:
-               GRAFANA_API_KEY: ${{ secrets.GRAFANA_API_KEY }}
-        run: |
-          cd python-metrics-demo
-          grafanactl resources push dashboards \
-          --path k8s/dashboards/ \
-          --folder "EKS Monitoring" \
-          --grafana-url http://$(kubectl get svc grafana -n monitoring2285 -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'):80 \
-          --api-key $GRAFANA_API_KEY
-
-      # - name: Upload Grafana Dashboards
-      #   env:
-      #       GRAFANA_API_KEY: ${{ secrets.GRAFANA_API_KEY }}
-      #   run: |
-      #     sudo apt update
-      #     sudo apt install -y python3-pip
-      #     pip install grafana-client --break-system-packages
-          
-      #     cat <<'PY' > import_dashboards.py
-      #     from grafana_client import GrafanaApi
-      #     import os, json
-          
-      #     GRAFANA_HOST = "http://a9f3bae50561b4ef1a71bf4bdae52971-1305649414.ap-northeast-1.elb.amazonaws.com/"
-      #     API_KEY = os.getenv("GRAFANA_API_KEY")
-      #     DASHBOARD_PATH = "python-metrics-demo/k8s/dashboards"
-      #     FOLDER_NAME = "EKS Monitoring"
-          
-      #     grafana = GrafanaApi.from_url(GRAFANA_HOST, API_KEY)
-      #     folders = grafana.folders.list_folders()
-      #     folder_id = next((f["id"] for f in folders if f["title"] == FOLDER_NAME), None)
-      #     if not folder_id:
-      #         created = grafana.folders.add_folder(title=FOLDER_NAME)  
-      #         folder_id = created["id"]
-      #         print(f" Created folder '{FOLDER_NAME}'")
-          
-      #     for file in os.listdir(DASHBOARD_PATH):
-      #         if file.endswith(".json"):
-      #             path = os.path.join(DASHBOARD_PATH, file)
-      #             with open(path) as f:
-      #                 data = json.load(f)
-      #             grafana.dashboards.update_dashboard({
-      #                 "dashboard": data,
-      #                 "folderId": folder_id,
-      #                 "overwrite": True
-      #             })
-      #             print(f"✅ Imported {file}")
-      #     PY
-          
-      #     python3 import_dashboards.py
-
-
-
-      # - name: Upload Grafana Dashboards
-      #   env:
-      #     GRAFANA_SERVER: a9f3bae50561b4ef1a71bf4bdae52971-1305649414.ap-northeast-1.elb.amazonaws.com
-      #     # GRAFANA_STACK_ID: local
-      #     GRAFANA_TOKEN: ${{ secrets.GRAFANA_TOKEN }}
-      #     GRAFANACTL_VERSION: v0.1.5
-      #   run: |
-      #     cd python-metrics-demo
-      #     echo "🔧 Installing grafanactl..."
-      #     curl -L -o grafanactl-x86_64.tar.gz "https://github.com/grafana/grafanactl/releases/download/${GRAFANACTL_VERSION}/grafanactl_Linux_x86_64.tar.gz"
-      #     tar -xzf grafanactl-x86_64.tar.gz
-      #     chmod +x grafanactl
-      #     sudo mv grafanactl /usr/local/bin/grafanactl
-
-      #     echo "📊 Deploying dashboards using grafanactl..."
-      #     if [ -d k8s/dashboards ]; then
-      #       grafanactl resources push dashboards --path k8s/dashboards/
-      #     else
-      #       echo "❌ Dashboards directory not found: k8s/dashboards"
-      #       exit 1
-      #     fi
-
-
-
       - name: Deploy Grafana
         run: |
           cd python-metrics-demo
           helm repo add grafana https://grafana.github.io/helm-charts
           helm repo update
           helm upgrade --install grafana grafana/grafana -n monitoring2285 -f k8s/grafana-values.yaml
-
       - name: Verify Deployments
         run: |
           kubectl get pods -n demo2285
           kubectl get pods -n monitoring2285
           kubectl get svc -n monitoring2285
-
-
