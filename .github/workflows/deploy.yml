@@ -75,6 +75,17 @@ jobs:
           cd python-metrics-demo
           envsubst < k8s/python-app.yaml | kubectl apply -f -
 
+  # delete-old-service:
+  #   runs-on: self-hosted
+  #   needs: deploy-app
+  #   steps:
+  #     - name: Delete old service for grafana and prometheus
+  #       run: |
+  #         kubectl delete svc grafana -n monitoring2285
+  #         kubectl delete svc prometheus-server -n monitoring2285
+
+      
+
   deploy-prometheus:
     runs-on: self-hosted
     needs: deploy-app
