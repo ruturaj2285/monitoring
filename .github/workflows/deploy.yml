@@ -12,13 +12,16 @@ env:
   IMAGE_REPO: python-metrics-demo
 
 jobs:
-  build-and-deploy:
+  checkout:
     runs-on: self-hosted
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+  configure-aws:
+    runs-on: self-hosted
+    needs: checkout
+    steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -27,8 +30,14 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
 
+  build-and-push:
+    runs-on: self-hosted
+    needs: configure-aws
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Login to Amazon ECR
-        id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build and push Docker image
@@ -38,6 +47,11 @@ jobs:
           docker build -t python-metrics-demo .
           docker tag python-metrics-demo:latest 227295996532.dkr.ecr.ap-northeast-1.amazonaws.com/python-metrics-demo:latest
           docker push 227295996532.dkr.ecr.ap-northeast-1.amazonaws.com/python-metrics-demo:latest
+
+  setup-k8s:
+    runs-on: self-hosted
+    needs: build-and-push
+    steps:
       - name: Setup kubectl
         uses: azure/setup-kubectl@v3
 
@@ -51,16 +65,31 @@ jobs:
         run: |
           kubectl create ns demo2285 --dry-run=client -o yaml | kubectl apply -f -
           kubectl create ns monitoring2285 --dry-run=client -o yaml | kubectl apply -f -
+
+  deploy-app:
+    runs-on: self-hosted
+    needs: setup-k8s
+    steps:
       - name: Deploy Python App
         run: |
           cd python-metrics-demo
           envsubst < k8s/python-app.yaml | kubectl apply -f -
+
+  deploy-prometheus:
+    runs-on: self-hosted
+    needs: deploy-app
+    steps:
       - name: Deploy Prometheus
         run: |
           cd python-metrics-demo
           helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
           helm repo update
           helm upgrade --install prometheus prometheus-community/prometheus -n monitoring2285 -f k8s/prometheus-values.yaml
+
+  create-grafana-configmap:
+    runs-on: self-hosted
+    needs: deploy-prometheus
+    steps:
       - name: Create Grafana Dashboards ConfigMaps
         run: |
           cd python-metrics-demo
@@ -70,12 +99,22 @@ jobs:
             --from-file=k8s/dashboards/cluster_overview.json \
             -o yaml --dry-run=client | kubectl apply -f -
           kubectl label configmap python-dashboard -n monitoring2285 grafana_dashboard="1" --overwrite
+
+  deploy-grafana:
+    runs-on: self-hosted
+    needs: create-grafana-configmap
+    steps:
       - name: Deploy Grafana
         run: |
           cd python-metrics-demo
           helm repo add grafana https://grafana.github.io/helm-charts
           helm repo update
           helm upgrade --install grafana grafana/grafana -n monitoring2285 -f k8s/grafana-values.yaml
+
+  verify:
+    runs-on: self-hosted
+    needs: deploy-grafana
+    steps:
       - name: Verify Deployments
         run: |
           kubectl get pods -n demo2285
