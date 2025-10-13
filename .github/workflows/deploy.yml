@@ -88,12 +88,12 @@ jobs:
         env:
                GRAFANA_API_KEY: ${{ secrets.GRAFANA_API_KEY }}
         run: |
-             cd python-metrics-demo
-             grafanactl import-dashboards \
-              --grafana-url http://$(kubectl get svc grafana -n monitoring2285 -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'):80 \
-              --api-key $GRAFANA_API_KEY \
-              --folder "EKS Monitoring" \
-              --dashboards-dir k8s/dashboards/
+          cd python-metrics-demo
+          grafanactl resources push dashboards \
+          --path k8s/dashboards/ \
+          --folder "EKS Monitoring" \
+          --grafana-url http://$(kubectl get svc grafana -n monitoring2285 -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'):80 \
+          --api-key $GRAFANA_API_KEY
 
       # - name: Upload Grafana Dashboards
       #   env:
